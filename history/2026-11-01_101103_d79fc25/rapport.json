@@ -1,0 +1,245 @@
+{
+  "url": "https://ystest1.github.io/VLS/",
+  "dateUTC": "2026-11-01T10:11:02Z",
+  "captures": [
+    {
+      "format": "desktop",
+      "fichier": "homepage-desktop.png",
+      "premierEcran": "homepage-desktop-premier-ecran.png",
+      "largeurViewport": 1440,
+      "largeurImage": 1440,
+      "hauteurImage": 7520,
+      "tailleOctets": 694667,
+      "methodePleinePage": "capture Chromium pleine page",
+      "tranches": [
+        "parts/homepage-desktop-part-01.png",
+        "parts/homepage-desktop-part-02.png",
+        "parts/homepage-desktop-part-03.png",
+        "parts/homepage-desktop-part-04.png"
+      ],
+      "tranchesPixels": [
+        {
+          "fichier": "parts/homepage-desktop-part-01.png",
+          "de": 0,
+          "a": 1800
+        },
+        {
+          "fichier": "parts/homepage-desktop-part-02.png",
+          "de": 1800,
+          "a": 3600
+        },
+        {
+          "fichier": "parts/homepage-desktop-part-03.png",
+          "de": 3600,
+          "a": 5400
+        },
+        {
+          "fichier": "parts/homepage-desktop-part-04.png",
+          "de": 5400,
+          "a": 7520
+        }
+      ],
+      "elementsFixesMasquesPleinePage": 2,
+      "diagnostic": {
+        "largeurFenetre": 1440,
+        "hauteurFenetre": 900,
+        "largeurMiseEnPage": 1440,
+        "largeurContenu": 1440,
+        "hauteurPage": 7520,
+        "debordementHorizontal": false,
+        "modeDocument": "quirks (doctype absent)",
+        "metaViewport": false,
+        "titre": "Accueil Valoris Patrimoine"
+      },
+      "ressources": {
+        "attentePolices": "ok",
+        "attenteImages": "ok",
+        "polices": [
+          "Bodoni Moda 500",
+          "Hanken Grotesk 400",
+          "Hanken Grotesk 500",
+          "Hanken Grotesk 600"
+        ],
+        "images": 0,
+        "imagesEnErreur": [],
+        "defilement": {
+          "pas": 11,
+          "complet": true
+        }
+      },
+      "erreursConsole": [],
+      "requetesEchouees": [],
+      "alertes": [
+        "Balise <meta name=\"viewport\"> absente.",
+        "Déclaration <!doctype html> absente : le navigateur affiche la page en mode de compatibilité (quirks)."
+      ]
+    },
+    {
+      "format": "tablet",
+      "fichier": "homepage-tablet.png",
+      "premierEcran": "homepage-tablet-premier-ecran.png",
+      "largeurViewport": 768,
+      "largeurImage": 980,
+      "hauteurImage": 10474,
+      "tailleOctets": 555572,
+      "methodePleinePage": "capture Chromium pleine page",
+      "tranches": [
+        "parts/homepage-tablet-part-01.png",
+        "parts/homepage-tablet-part-02.png",
+        "parts/homepage-tablet-part-03.png",
+        "parts/homepage-tablet-part-04.png",
+        "parts/homepage-tablet-part-05.png"
+      ],
+      "tranchesPixels": [
+        {
+          "fichier": "parts/homepage-tablet-part-01.png",
+          "de": 0,
+          "a": 2000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-02.png",
+          "de": 2000,
+          "a": 4000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-03.png",
+          "de": 4000,
+          "a": 6000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-04.png",
+          "de": 6000,
+          "a": 8000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-05.png",
+          "de": 8000,
+          "a": 10474
+        }
+      ],
+      "elementsFixesMasquesPleinePage": 2,
+      "diagnostic": {
+        "largeurFenetre": 980,
+        "hauteurFenetre": 1307,
+        "largeurMiseEnPage": 980,
+        "largeurContenu": 980,
+        "hauteurPage": 10474,
+        "debordementHorizontal": false,
+        "modeDocument": "quirks (doctype absent)",
+        "metaViewport": false,
+        "titre": "Accueil Valoris Patrimoine"
+      },
+      "ressources": {
+        "attentePolices": "ok",
+        "attenteImages": "ok",
+        "polices": [
+          "Bodoni Moda 500",
+          "Hanken Grotesk 400",
+          "Hanken Grotesk 500",
+          "Hanken Grotesk 600"
+        ],
+        "images": 0,
+        "imagesEnErreur": [],
+        "defilement": {
+          "pas": 11,
+          "complet": true
+        }
+      },
+      "erreursConsole": [],
+      "requetesEchouees": [],
+      "alertes": [
+        "Mise en page de 980 px au lieu de 768 px : sur un vrai appareil, la page s'affiche réduite (balise meta viewport absente ?).",
+        "Balise <meta name=\"viewport\"> absente.",
+        "Déclaration <!doctype html> absente : le navigateur affiche la page en mode de compatibilité (quirks)."
+      ]
+    },
+    {
+      "format": "mobile",
+      "fichier": "homepage-mobile.png",
+      "premierEcran": "homepage-mobile-premier-ecran.png",
+      "largeurViewport": 390,
+      "largeurImage": 390,
+      "hauteurImage": 6892,
+      "tailleOctets": 425314,
+      "methodePleinePage": "assemblage par segments (page de plus de 15000 px)",
+      "tranches": [
+        "parts/homepage-mobile-part-01.png",
+        "parts/homepage-mobile-part-02.png",
+        "parts/homepage-mobile-part-03.png",
+        "parts/homepage-mobile-part-04.png"
+      ],
+      "tranchesPixels": [
+        {
+          "fichier": "parts/homepage-mobile-part-01.png",
+          "de": 0,
+          "a": 1700
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-02.png",
+          "de": 1700,
+          "a": 3400
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-03.png",
+          "de": 3400,
+          "a": 5100
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-04.png",
+          "de": 5100,
+          "a": 6892
+        }
+      ],
+      "elementsFixesMasquesPleinePage": 2,
+      "diagnostic": {
+        "largeurFenetre": 1083,
+        "hauteurFenetre": 2344,
+        "largeurMiseEnPage": 980,
+        "largeurContenu": 1083,
+        "hauteurPage": 19142,
+        "debordementHorizontal": true,
+        "modeDocument": "quirks (doctype absent)",
+        "metaViewport": false,
+        "titre": "Accueil Valoris Patrimoine"
+      },
+      "ressources": {
+        "attentePolices": "ok",
+        "attenteImages": "ok",
+        "polices": [
+          "Bodoni Moda 500",
+          "Hanken Grotesk 400",
+          "Hanken Grotesk 500",
+          "Hanken Grotesk 600"
+        ],
+        "images": 0,
+        "imagesEnErreur": [],
+        "defilement": {
+          "pas": 11,
+          "complet": true
+        }
+      },
+      "erreursConsole": [],
+      "requetesEchouees": [],
+      "alertes": [
+        "Balise <meta name=\"viewport\"> absente.",
+        "Déclaration <!doctype html> absente : le navigateur affiche la page en mode de compatibilité (quirks).",
+        "Débordement horizontal : la page défile sur le côté."
+      ]
+    }
+  ],
+  "verificationVersion": {
+    "commit": "d79fc254ed9732c35cbc2b329923378fa530b80a",
+    "versionEnLigneConfirmee": true,
+    "avantCaptures": {
+      "confirmee": true,
+      "preuve": "deploiement",
+      "casDeploiement": "succes",
+      "methode": "déploiement le plus récent (7471561415, 2026-11-01T10:09:44Z) = commit d79fc25, statut success, contenu servi identique à index.html"
+    },
+    "apresCaptures": {
+      "confirmee": true,
+      "casDeploiement": "succes",
+      "detail": "déploiement le plus récent (7471561415, 2026-11-01T10:09:44Z) = commit d79fc25, statut success"
+    }
+  }
+}

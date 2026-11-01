@@ -1,0 +1,69 @@
+{
+  "site": "https://ystest1.github.io/VLS/",
+  "commitDuSite": "d79fc254ed9732c35cbc2b329923378fa530b80a",
+  "dateUTC": "2026-11-01T10:11:02Z",
+  "versionEnLigneConfirmee": true,
+  "methodeConfirmation": "avant captures : déploiement le plus récent (7471561415, 2026-11-01T10:09:44Z) = commit d79fc25, statut success, contenu servi identique à index.html | après captures : confirmée - déploiement le plus récent (7471561415, 2026-11-01T10:09:44Z) = commit d79fc25, statut success",
+  "rapport": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/rapport.json",
+  "rapportVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/rapport.json",
+  "historique": "https://github.com/Ystest1/VLS/tree/screenshots/history/2026-11-01_101103_d79fc25",
+  "captures": {
+    "desktop": {
+      "pageEntiere": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/homepage-desktop.png",
+      "premierEcran": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/homepage-desktop-premier-ecran.png",
+      "tranches": [
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-desktop-part-01.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-desktop-part-02.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-desktop-part-03.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-desktop-part-04.png"
+      ],
+      "pageEntiereVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/homepage-desktop.png",
+      "premierEcranVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/homepage-desktop-premier-ecran.png",
+      "dimensions": "1440 x 7520 px",
+      "methodePleinePage": "capture Chromium pleine page",
+      "alertes": [
+        "Balise <meta name=\"viewport\"> absente.",
+        "Déclaration <!doctype html> absente : le navigateur affiche la page en mode de compatibilité (quirks)."
+      ]
+    },
+    "mobile": {
+      "pageEntiere": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/homepage-mobile.png",
+      "premierEcran": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/homepage-mobile-premier-ecran.png",
+      "tranches": [
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-mobile-part-01.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-mobile-part-02.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-mobile-part-03.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-mobile-part-04.png"
+      ],
+      "pageEntiereVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/homepage-mobile.png",
+      "premierEcranVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/homepage-mobile-premier-ecran.png",
+      "dimensions": "390 x 6892 px",
+      "methodePleinePage": "assemblage par segments (page de plus de 15000 px)",
+      "alertes": [
+        "Balise <meta name=\"viewport\"> absente.",
+        "Déclaration <!doctype html> absente : le navigateur affiche la page en mode de compatibilité (quirks).",
+        "Débordement horizontal : la page défile sur le côté."
+      ]
+    },
+    "tablet": {
+      "pageEntiere": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/homepage-tablet.png",
+      "premierEcran": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/homepage-tablet-premier-ecran.png",
+      "tranches": [
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-tablet-part-01.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-tablet-part-02.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-tablet-part-03.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-tablet-part-04.png",
+        "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/screenshots/parts/homepage-tablet-part-05.png"
+      ],
+      "pageEntiereVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/homepage-tablet.png",
+      "premierEcranVersionFigee": "https://raw.githubusercontent.com/Ystest1/VLS/screenshots/history/2026-11-01_101103_d79fc25/homepage-tablet-premier-ecran.png",
+      "dimensions": "980 x 10474 px",
+      "methodePleinePage": "capture Chromium pleine page",
+      "alertes": [
+        "Mise en page de 980 px au lieu de 768 px : sur un vrai appareil, la page s'affiche réduite (balise meta viewport absente ?).",
+        "Balise <meta name=\"viewport\"> absente.",
+        "Déclaration <!doctype html> absente : le navigateur affiche la page en mode de compatibilité (quirks)."
+      ]
+    }
+  }
+}
