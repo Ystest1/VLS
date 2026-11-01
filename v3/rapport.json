@@ -1,0 +1,236 @@
+{
+  "url": "http://127.0.0.1:8770/VLS/",
+  "dateUTC": "2026-11-01T11:15:46Z",
+  "captures": [
+    {
+      "format": "desktop",
+      "fichier": "homepage-desktop.png",
+      "premierEcran": "homepage-desktop-premier-ecran.png",
+      "largeurViewport": 1440,
+      "largeurImage": 1440,
+      "hauteurImage": 7479,
+      "tailleOctets": 1187513,
+      "methodePleinePage": "capture Chromium pleine page",
+      "tranches": [
+        "parts/homepage-desktop-part-01.png",
+        "parts/homepage-desktop-part-02.png",
+        "parts/homepage-desktop-part-03.png",
+        "parts/homepage-desktop-part-04.png"
+      ],
+      "tranchesPixels": [
+        {
+          "fichier": "parts/homepage-desktop-part-01.png",
+          "de": 0,
+          "a": 1800
+        },
+        {
+          "fichier": "parts/homepage-desktop-part-02.png",
+          "de": 1800,
+          "a": 3600
+        },
+        {
+          "fichier": "parts/homepage-desktop-part-03.png",
+          "de": 3600,
+          "a": 5400
+        },
+        {
+          "fichier": "parts/homepage-desktop-part-04.png",
+          "de": 5400,
+          "a": 7479
+        }
+      ],
+      "elementsFixesMasquesPleinePage": 2,
+      "diagnostic": {
+        "largeurFenetre": 1440,
+        "hauteurFenetre": 900,
+        "largeurMiseEnPage": 1440,
+        "largeurContenu": 1440,
+        "hauteurPage": 7479,
+        "debordementHorizontal": false,
+        "modeDocument": "standard",
+        "metaViewport": true,
+        "titre": "Accueil Valoris Patrimoine"
+      },
+      "ressources": {
+        "attentePolices": "ok",
+        "attenteImages": "ok",
+        "polices": [
+          "Playfair Display 400 900",
+          "Bodoni Moda 500",
+          "Hanken Grotesk 400 600"
+        ],
+        "images": 0,
+        "imagesEnErreur": [],
+        "defilement": {
+          "pas": 11,
+          "complet": true
+        }
+      },
+      "erreursConsole": [
+        "Failed to load resource: the server responded with a status of 404 (File not found)"
+      ],
+      "requetesEchouees": [],
+      "alertes": []
+    },
+    {
+      "format": "tablet",
+      "fichier": "homepage-tablet.png",
+      "premierEcran": "homepage-tablet-premier-ecran.png",
+      "largeurViewport": 768,
+      "largeurImage": 768,
+      "hauteurImage": 10283,
+      "tailleOctets": 1070226,
+      "methodePleinePage": "capture Chromium pleine page",
+      "tranches": [
+        "parts/homepage-tablet-part-01.png",
+        "parts/homepage-tablet-part-02.png",
+        "parts/homepage-tablet-part-03.png",
+        "parts/homepage-tablet-part-04.png",
+        "parts/homepage-tablet-part-05.png"
+      ],
+      "tranchesPixels": [
+        {
+          "fichier": "parts/homepage-tablet-part-01.png",
+          "de": 0,
+          "a": 2000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-02.png",
+          "de": 2000,
+          "a": 4000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-03.png",
+          "de": 4000,
+          "a": 6000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-04.png",
+          "de": 6000,
+          "a": 8000
+        },
+        {
+          "fichier": "parts/homepage-tablet-part-05.png",
+          "de": 8000,
+          "a": 10283
+        }
+      ],
+      "elementsFixesMasquesPleinePage": 2,
+      "diagnostic": {
+        "largeurFenetre": 768,
+        "hauteurFenetre": 1024,
+        "largeurMiseEnPage": 768,
+        "largeurContenu": 768,
+        "hauteurPage": 10283,
+        "debordementHorizontal": false,
+        "modeDocument": "standard",
+        "metaViewport": true,
+        "titre": "Accueil Valoris Patrimoine"
+      },
+      "ressources": {
+        "attentePolices": "ok",
+        "attenteImages": "ok",
+        "polices": [
+          "Playfair Display 400 900",
+          "Bodoni Moda 500",
+          "Hanken Grotesk 400 600"
+        ],
+        "images": 0,
+        "imagesEnErreur": [],
+        "defilement": {
+          "pas": 13,
+          "complet": true
+        }
+      },
+      "erreursConsole": [],
+      "requetesEchouees": [],
+      "alertes": []
+    },
+    {
+      "format": "mobile",
+      "fichier": "homepage-mobile.png",
+      "premierEcran": "homepage-mobile-premier-ecran.png",
+      "largeurViewport": 390,
+      "largeurImage": 390,
+      "hauteurImage": 11730,
+      "tailleOctets": 976762,
+      "methodePleinePage": "capture Chromium pleine page",
+      "tranches": [
+        "parts/homepage-mobile-part-01.png",
+        "parts/homepage-mobile-part-02.png",
+        "parts/homepage-mobile-part-03.png",
+        "parts/homepage-mobile-part-04.png",
+        "parts/homepage-mobile-part-05.png",
+        "parts/homepage-mobile-part-06.png",
+        "parts/homepage-mobile-part-07.png"
+      ],
+      "tranchesPixels": [
+        {
+          "fichier": "parts/homepage-mobile-part-01.png",
+          "de": 0,
+          "a": 1700
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-02.png",
+          "de": 1700,
+          "a": 3400
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-03.png",
+          "de": 3400,
+          "a": 5100
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-04.png",
+          "de": 5100,
+          "a": 6800
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-05.png",
+          "de": 6800,
+          "a": 8500
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-06.png",
+          "de": 8500,
+          "a": 10200
+        },
+        {
+          "fichier": "parts/homepage-mobile-part-07.png",
+          "de": 10200,
+          "a": 11730
+        }
+      ],
+      "elementsFixesMasquesPleinePage": 2,
+      "diagnostic": {
+        "largeurFenetre": 390,
+        "hauteurFenetre": 844,
+        "largeurMiseEnPage": 390,
+        "largeurContenu": 390,
+        "hauteurPage": 11730,
+        "debordementHorizontal": false,
+        "modeDocument": "standard",
+        "metaViewport": true,
+        "titre": "Accueil Valoris Patrimoine"
+      },
+      "ressources": {
+        "attentePolices": "ok",
+        "attenteImages": "ok",
+        "polices": [
+          "Playfair Display 400 900",
+          "Bodoni Moda 500",
+          "Hanken Grotesk 400 600"
+        ],
+        "images": 0,
+        "imagesEnErreur": [],
+        "defilement": {
+          "pas": 18,
+          "complet": true
+        }
+      },
+      "erreursConsole": [],
+      "requetesEchouees": [],
+      "alertes": []
+    }
+  ]
+}
