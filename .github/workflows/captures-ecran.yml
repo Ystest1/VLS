@@ -1,0 +1,616 @@
+# Captures d'écran automatiques du site publié sur GitHub Pages.
+#
+# Déclenchement : chaque push sur main (= chaque mise à jour du site), ou à la main
+# depuis l'onglet Actions (« Run workflow »).
+# Les images sont publiées sur la branche « screenshots », jamais sur main :
+#   - le site, la branche main et GitHub Pages ne sont pas modifiés ;
+#   - aucune boucle : ce workflow n'écoute que main, et un push effectué avec
+#     GITHUB_TOKEN ne déclenche de toute façon aucun autre workflow.
+
+name: Captures d'écran du site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write      # pousser sur la branche screenshots (jamais sur main)
+  pages: read          # lire la configuration et les déploiements GitHub Pages
+  deployments: read    # lire l'état des déploiements de l'environnement github-pages
+
+# Groupe par branche : une exécution manuelle lancée (et refusée) sur une autre branche
+# ne peut pas annuler une exécution en cours sur main.
+concurrency:
+  group: captures-ecran-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SITE_URL: https://ystest1.github.io/VLS/
+  FICHIER_SITE: index.html          # fichier servi à l'adresse ci-dessus
+  BRANCHE_CAPTURES: screenshots
+
+jobs:
+  captures:
+    # Version d'Ubuntu épinglée : Playwright (version figée) installe des dépendances système
+    # propres à chaque version d'Ubuntu ; « ubuntu-latest » peut changer sans prévenir.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      # Le commit attendu est GITHUB_SHA : il n'a de sens que pour main. Une exécution manuelle
+      # lancée depuis une autre branche (ou un tag) est refusée explicitement, avant toute action.
+      - name: Refuser toute exécution hors de la branche main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Exécution refusée : ce workflow ne s'exécute que sur refs/heads/main (reçu : $REF)."
+            echo "Exécution refusée : branche « $REF » (seule refs/heads/main est autorisée)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Branche vérifiée : $REF"
+
+      # fetch-depth 1 : seul le dernier commit de main est récupéré.
+      # (fetch-depth 0 téléchargerait toutes les branches, donc tout l'historique des captures.)
+      - name: Récupérer le dépôt (main, lecture seule)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      # Une version n'est déclarée « confirmée » que si l'une de ces preuves est obtenue :
+      #   A) l'API indique que CE commit est le déploiement github-pages LE PLUS RÉCENT (d'après
+      #      sa date de création) et que son statut le plus récent est « success » (ou, en mode
+      #      classique ET seulement si l'API ne renvoie aucune information sur les déploiements,
+      #      que le dernier build Pages porte ce commit), ET le contenu servi est identique à
+      #      index.html (si cette comparaison s'applique) ;
+      #   B) seulement si l'API ne renvoie aucune information sur les déploiements : le contenu
+      #      servi est identique à index.html, Pages publie en mode classique depuis main à la
+      #      racine, et aucun autre fichier du site (CSS, images…) n'a changé depuis la dernière
+      #      version capturée.
+      # Un déploiement identifié en cours, en échec, sans statut ou au statut incomplet
+      # empêche toujours la confirmation : aucune preuve de secours ne peut le compenser.
+      # La comparaison de contenu n'est utilisée qu'en mode classique (legacy) : en mode
+      # GitHub Actions, le site publié peut être généré et différer de index.html.
+      # Sinon : capture quand même, mais « non confirmée », avec la raison.
+      - name: Attendre que GitHub Pages serve cette version
+        id: attente
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AVANT: ${{ github.event.before }}
+        run: |
+          # pipefail : l'échec d'une commande dans un pipeline n'est plus masqué par la dernière.
+          # Les tests « grep -q » portent sur des chaînes passées par <<< (pas de pipeline),
+          # pour éviter les faux résultats dus à SIGPIPE.
+          set -uo pipefail
+          REPO="$GITHUB_REPOSITORY"
+
+          # Fonction commune aux deux vérifications (avant et après les captures).
+          # Écrite dans un fichier temporaire du runner, rien n'est ajouté au dépôt.
+          cat > "$RUNNER_TEMP/deploiement.sh" <<'FIN'
+          # Détermine le déploiement github-pages le plus récent d'après sa date de création
+          # (created_at), l'identifiant ne servant qu'en cas d'égalité de date, puis le statut
+          # le plus récent de ce déploiement selon la même règle.
+          # Résultat : DEP_OK (oui/non), DEP_CAS, DEP_SECOURS (oui/non), DEP_ID, DEP_SHA,
+          # DEP_ETAT, DEP_DETAIL.
+          # DEP_CAS, une seule valeur parmi :
+          #   inaccessible      erreur API AVANT toute page valide reçue (droits, réseau)
+          #   aucun             liste lue en entier (au moins une page valide), aucun déploiement
+          #   reponse_invalide  une page reçue n'est pas un tableau JSON
+          #   liste_incomplete  lecture interrompue APRÈS au moins une page valide (même vide),
+          #                     liste modifiée pendant la lecture, ou élément sans date,
+          #                     identifiant ou commit
+          #   date_invalide     un déploiement porte une date qui n'existe pas au calendrier
+          #   autre_commit      le déploiement le plus récent porte un autre commit
+          #   statut_illisible  dernier déploiement = ce commit, lecture des statuts en erreur,
+          #                     interrompue, invalide ou instable
+          #   sans_statut       dernier déploiement = ce commit, aucun statut
+          #   statut_incomplet  dernier déploiement = ce commit, statut sans date/identifiant/état
+          #   statut_date_invalide  dernier déploiement = ce commit, statut à date inexistante
+          #   en_cours          dernier déploiement = ce commit, statut queued/pending/in_progress
+          #   echec             dernier déploiement = ce commit, statut failure/error
+          #   autre_statut      dernier déploiement = ce commit, autre statut (inactive…)
+          #   succes            dernier déploiement = ce commit, statut success
+          # DEP_SECOURS=oui uniquement pour « inaccessible » et « aucun » : l'API ne fournit
+          # alors aucune information sur les déploiements, et une preuve de secours (build
+          # classique, comparaison de contenu) est admise. Dans tous les autres cas, une
+          # information défavorable, incomplète ou contradictoire existe : pas de secours.
+          RE_DATE='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z'
+          # Date réellement valide : bon format ET date existante au calendrier (GNU date relit
+          # la date et doit la réécrire à l'identique, ce qui rejette 2026-99-99, 2026-02-30,
+          # 25:00:00, etc.).
+          date_valide() {
+            local d="$1" n
+            [[ "$d" =~ ^${RE_DATE}$ ]] || return 1
+            n=$(date -u -d "$d" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) || return 1
+            [ "$n" = "$d" ]
+          }
+          # Vrai si au moins une ligne de la liste porte une date invalide (1er champ).
+          dates_invalides() {
+            local d reste
+            while read -r d reste; do
+              [ -z "$d" ] && continue
+              date_valide "$d" || return 0
+            done <<< "$1"
+            return 1
+          }
+          # Lecture paginée EXPLICITE d'une liste de l'API GitHub, une page à la fois (gh api -i),
+          # en suivant l'en-tête « Link: rel="next" » comme le fait --paginate. On n'utilise pas
+          # --paginate : avec lui, « erreur dès la page 1 » et « page 1 vide puis erreur sur la
+          # page 2 » donnent exactement la même sortie (vérifié avec gh 2.89), et une réponse 200
+          # contenant un objet au lieu d'un tableau serait parcourue par « .[] ».
+          # $1 : chemin avec paramètres (sans « page ») ; $2 : filtre jq, une ligne par élément.
+          # Résultat : LISTE_PAGES (pages valides reçues), LISTE_LIGNES, et LISTE_ETAT parmi :
+          #   complete     toutes les pages lues, la dernière sans lien « next »
+          #   inaccessible erreur avant toute page valide
+          #   interrompue  erreur après au moins une page valide (même vide)
+          #   invalide     une page reçue n'est pas un tableau JSON
+          #   instable     la page 1 a changé pendant la lecture (lecture sur plusieurs pages)
+          #   trop_longue  plus de 100 pages
+          lire_liste() {
+            LISTE_ETAT=""; LISTE_LIGNES=""; LISTE_PAGES=0
+            local p=1 sortie entetes corps lignes premiere=""
+            while :; do
+              if [ "$p" -gt 100 ]; then LISTE_ETAT=trop_longue; return 0; fi
+              if ! sortie=$(gh api -i "$1&page=$p" 2>/dev/null); then
+                if [ "$LISTE_PAGES" -eq 0 ]; then LISTE_ETAT=inaccessible; else LISTE_ETAT=interrompue; fi
+                return 0
+              fi
+              # Sortie de « gh api -i » : ligne d'état, en-têtes, ligne vide, corps.
+              sortie=${sortie//$'\r'/}
+              entetes=$(sed '/^$/q' <<< "$sortie")
+              corps=$(sed '1,/^$/d' <<< "$sortie")
+              if ! jq -e 'type == "array"' >/dev/null 2>&1 <<< "$corps" \
+                 || ! lignes=$(jq -r "$2" 2>/dev/null <<< "$corps"); then
+                LISTE_ETAT=invalide; return 0
+              fi
+              LISTE_PAGES=$((LISTE_PAGES + 1))
+              if [ "$p" -eq 1 ]; then premiere="$lignes"; fi
+              if [ -n "$lignes" ]; then LISTE_LIGNES="${LISTE_LIGNES:+$LISTE_LIGNES$'\n'}$lignes"; fi
+              if grep -qiE '^link:.*rel="next"' <<< "$entetes"; then
+                p=$((p + 1))
+              else
+                break
+              fi
+            done
+            # Lecture sur plusieurs pages : la liste a pu changer entre deux pages (pagination
+            # par numéro). On relit la page 1 ; si elle a changé, la lecture n'est pas fiable.
+            if [ "$LISTE_PAGES" -gt 1 ]; then
+              if ! sortie=$(gh api "$1&page=1" 2>/dev/null); then LISTE_ETAT=interrompue; return 0; fi
+              if ! jq -e 'type == "array"' >/dev/null 2>&1 <<< "$sortie" \
+                 || ! lignes=$(jq -r "$2" 2>/dev/null <<< "$sortie"); then
+                LISTE_ETAT=invalide; return 0
+              fi
+              if [ "$lignes" != "$premiere" ]; then LISTE_ETAT=instable; return 0; fi
+            fi
+            LISTE_ETAT=complete
+          }
+          # Un élément qui n'est pas un objet produit « INVALIDE », rejeté ensuite par le contrôle de format.
+          JQ_DEP='.[] | if type == "object" then "\(.created_at // "ABSENT") \(.id // "ABSENT") \(.sha // "ABSENT")" else "INVALIDE" end'
+          JQ_STATUT='.[] | if type == "object" then "\(.created_at // "ABSENT") \(.id // "ABSENT") \(.state // "ABSENT")" else "INVALIDE" end'
+          verifier_deploiement() {
+            DEP_OK=non; DEP_CAS=""; DEP_SECOURS=non; DEP_ID=""; DEP_SHA=""; DEP_ETAT=""; DEP_DETAIL=""
+            local lignes dernier date_dep
+            lire_liste "repos/$GITHUB_REPOSITORY/deployments?environment=github-pages&per_page=100" "$JQ_DEP"
+            case "$LISTE_ETAT" in
+              complete) ;;
+              inaccessible)
+                # Aucune page valide reçue : l'API n'a fourni aucune information.
+                DEP_CAS=inaccessible; DEP_SECOURS=oui
+                DEP_DETAIL="API des déploiements inaccessible (aucune page valide reçue)"; return 0 ;;
+              invalide)
+                DEP_CAS=reponse_invalide
+                DEP_DETAIL="réponse inattendue de l'API des déploiements (page qui n'est pas un tableau JSON)"; return 0 ;;
+              *)
+                # Au moins une page valide (même vide) a été reçue : jamais une absence d'information.
+                DEP_CAS=liste_incomplete
+                DEP_DETAIL="liste des déploiements incomplète (lecture « $LISTE_ETAT » après $LISTE_PAGES page(s) valide(s))"; return 0 ;;
+            esac
+            lignes="$LISTE_LIGNES"
+            if [ -z "$lignes" ]; then
+              DEP_CAS=aucun; DEP_SECOURS=oui
+              DEP_DETAIL="aucun déploiement github-pages (liste lue en entier, $LISTE_PAGES page(s))"; return 0
+            fi
+            if grep -qvE "^${RE_DATE} [0-9]+ [0-9a-f]{40}$" <<< "$lignes"; then
+              DEP_CAS=liste_incomplete
+              DEP_DETAIL="liste des déploiements incomplète (date, identifiant ou commit absent)"; return 0
+            fi
+            if dates_invalides "$lignes"; then
+              DEP_CAS=date_invalide
+              DEP_DETAIL="un déploiement porte une date inexistante : ordre des déploiements indéterminable"; return 0
+            fi
+            dernier=$(LC_ALL=C sort -k1,1 -k2,2n <<< "$lignes" | tail -n 1)
+            read -r date_dep DEP_ID DEP_SHA <<< "$dernier"
+            if [ "$DEP_SHA" != "$GITHUB_SHA" ]; then
+              DEP_CAS=autre_commit
+              DEP_DETAIL="le déploiement le plus récent ($date_dep) porte un autre commit (${DEP_SHA:0:7})"; return 0
+            fi
+            # Statuts : toute lecture qui n'est pas complète est bloquante, y compris
+            # « inaccessible » (un déploiement de ce commit est identifié, son état est inconnu).
+            lire_liste "repos/$GITHUB_REPOSITORY/deployments/$DEP_ID/statuses?per_page=100" "$JQ_STATUT"
+            if [ "$LISTE_ETAT" != complete ]; then
+              DEP_CAS=statut_illisible
+              DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, mais lecture des statuts « $LISTE_ETAT »"; return 0
+            fi
+            lignes="$LISTE_LIGNES"
+            if [ -z "$lignes" ]; then
+              DEP_CAS=sans_statut
+              DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, mais sans statut"; return 0
+            fi
+            if grep -qvE "^${RE_DATE} [0-9]+ [a-z_]+$" <<< "$lignes"; then
+              DEP_CAS=statut_incomplet
+              DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, mais statut incomplet (date, identifiant ou état absent)"; return 0
+            fi
+            if dates_invalides "$lignes"; then
+              DEP_CAS=statut_date_invalide
+              DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, mais un statut porte une date inexistante"; return 0
+            fi
+            DEP_ETAT=$(LC_ALL=C sort -k1,1 -k2,2n <<< "$lignes" | tail -n 1 | cut -d' ' -f3)
+            case "$DEP_ETAT" in
+              success)
+                DEP_OK=oui; DEP_CAS=succes
+                DEP_DETAIL="déploiement le plus récent ($DEP_ID, $date_dep) = commit ${GITHUB_SHA:0:7}, statut success" ;;
+              queued|pending|in_progress)
+                DEP_CAS=en_cours
+                DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, encore en cours (statut « $DEP_ETAT »)" ;;
+              failure|error)
+                DEP_CAS=echec
+                DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, en échec (statut « $DEP_ETAT »)" ;;
+              *)
+                DEP_CAS=autre_statut
+                DEP_DETAIL="dernier déploiement ($DEP_ID) = ce commit, statut « $DEP_ETAT »" ;;
+            esac
+          }
+          FIN
+          source "$RUNNER_TEMP/deploiement.sh"
+
+          # Configuration réelle de GitHub Pages
+          info=$(gh api "repos/$REPO/pages" 2>/dev/null || true)
+          source_pages=$(echo "$info" | jq -r 'if .source then (.source.branch + ":" + .source.path) else "inconnue" end' 2>/dev/null || echo inconnue)
+          type_pages=$(echo "$info" | jq -r '.build_type // "inconnu"' 2>/dev/null || echo inconnu)
+          source_pages="${source_pages:-inconnue}"; type_pages="${type_pages:-inconnu}"
+          echo "GitHub Pages : source = $source_pages, type = $type_pages"
+          comparaison_valide=non
+          if [ "$type_pages" = legacy ] && [ "$source_pages" = "main:/" ] && [ -f "$FICHIER_SITE" ]; then
+            comparaison_valide=oui
+          fi
+
+          attendu=""
+          if [ "$comparaison_valide" = oui ]; then attendu=$(sha256sum "$FICHIER_SITE" | cut -d' ' -f1) || attendu=""; fi
+
+          # Autres fichiers du site modifiés depuis la DERNIÈRE VERSION CAPTURÉE (lue dans latest.json),
+          # et pas seulement depuis le push précédent : si une exécution a été annulée par un push
+          # rapproché, ses modifications sont ainsi prises en compte.
+          # Le repli sur le commit précédent du push n'est admis que si latest.json n'existe pas
+          # encore (HTTP 404 : première exécution). Toute autre erreur laisse la référence
+          # inconnue, ce qui interdit la preuve par contenu.
+          base=""
+          code_latest=$(curl -s -o "$RUNNER_TEMP/latest-precedent.json" -w '%{http_code}' --max-time 20 \
+                        "https://raw.githubusercontent.com/${REPO}/${BRANCHE_CAPTURES}/latest.json" 2>/dev/null) || true
+          if [ "$code_latest" = 200 ]; then
+            base=$(jq -r '.commitDuSite // empty' "$RUNNER_TEMP/latest-precedent.json" 2>/dev/null) || base=""
+            [[ "$base" =~ ^[0-9a-f]{40}$ ]] || base=""
+          elif [ "$code_latest" = 404 ] && [ "$GITHUB_EVENT_NAME" = push ] \
+               && [[ "$AVANT" =~ ^[0-9a-f]{40}$ ]] && ! [[ "$AVANT" =~ ^0+$ ]]; then
+            base="$AVANT"
+          fi
+          autres="inconnu"
+          if [ "$base" = "$GITHUB_SHA" ]; then
+            autres=""
+          elif [ -n "$base" ] && git fetch -q --depth 1 origin "$base" 2>/dev/null \
+               && liste=$(git diff --name-only "$base" "$GITHUB_SHA" 2>/dev/null); then
+            autres=$(printf '%s' "$liste" | grep -vE '^$|^(index\.html|Index\.html|README\.md|\.github/.*)$' | tr '\n' ' ' || true)
+          fi
+          echo "Référence : ${base:-aucune} ; autres fichiers du site modifiés : ${autres:-aucun}"
+
+          a_jour=non; code=aucune
+          methode="non confirmée : délai de 10 minutes dépassé"
+          for i in $(seq 1 40); do
+            # Tous modes : le déploiement github-pages le plus récent (par date) doit porter ce
+            # commit et son statut le plus récent (par date) doit être « success ».
+            verifier_deploiement
+            echo "  Déploiements [$DEP_CAS] : $DEP_DETAIL"
+
+            # Contenu servi : téléchargé dans un fichier, puis haché SEULEMENT si curl a réussi
+            # (code 0, HTTP < 400). Un échec réseau ou HTTP laisse « servi » vide : jamais égal.
+            contenu_ok=non
+            if [ -n "$attendu" ]; then
+              servi=""
+              rm -f "$RUNNER_TEMP/servi.html"
+              if curl -sfL --max-time 30 -H 'Cache-Control: no-cache' -o "$RUNNER_TEMP/servi.html" "${SITE_URL}?v=${GITHUB_SHA}-${i}"; then
+                servi=$(sha256sum "$RUNNER_TEMP/servi.html" | cut -d' ' -f1) || servi=""
+              fi
+              if [ -n "$servi" ] && [ "$servi" = "$attendu" ]; then contenu_ok=oui; fi
+            fi
+
+            # Dernier build Pages (mode classique) : consulté UNIQUEMENT si l'API ne fournit
+            # aucune information sur les déploiements, et jamais suffisant seul.
+            build_ok=non; build=""
+            if [ "$type_pages" = legacy ] && [ "$DEP_SECOURS" = oui ]; then
+              build=$(gh api "repos/$REPO/pages/builds/latest" --jq '.status + " " + .commit' 2>/dev/null) || build=""
+              if [ "$build" = "built $GITHUB_SHA" ]; then build_ok=oui; fi
+            fi
+            echo "Essai $i : déploiement confirmé = $DEP_OK, build = ${build:-non consulté}, contenu identique = $contenu_ok"
+
+            # Preuve A : déploiement réussi de ce commit, le plus récent (+ contenu si comparable).
+            if [ "$DEP_OK" = oui ] && { [ "$contenu_ok" = oui ] || [ "$comparaison_valide" = non ]; }; then
+              a_jour=oui; code=deploiement; methode="$DEP_DETAIL"
+              if [ "$contenu_ok" = oui ]; then methode="$methode, contenu servi identique à $FICHIER_SITE"; fi
+              break
+            fi
+            # Secours (API sans aucune information) : le contenu servi doit être identique, ET soit
+            # le dernier build porte ce commit, soit aucun autre fichier du site n'a changé.
+            if [ "$DEP_SECOURS" = oui ] && [ "$contenu_ok" = oui ]; then
+              if [ "$build_ok" = oui ]; then
+                a_jour=oui; code=build
+                methode="secours (déploiements : $DEP_CAS) : dernier build Pages = commit ${GITHUB_SHA::7} et contenu servi identique à $FICHIER_SITE"
+                break
+              elif [ -z "$autres" ]; then
+                a_jour=oui; code=contenu
+                methode="secours (déploiements : $DEP_CAS) : contenu servi identique à $FICHIER_SITE (Pages classique, main:/), aucun autre fichier du site modifié depuis ${base::7}"
+                break
+              fi
+            fi
+            sleep 15
+          done
+
+          if [ "$a_jour" = oui ]; then
+            echo "Version confirmée : $methode"
+            sleep 20
+          else
+            methode="$methode ; $DEP_DETAIL"
+            if [ "$comparaison_valide" = non ]; then methode="$methode ; comparaison de contenu non applicable (Pages : type $type_pages, source $source_pages)"; fi
+            if [ "$DEP_OK" = oui ] && [ "$contenu_ok" = non ]; then methode="$methode ; l'API indique le déploiement mais le contenu servi diffère de $FICHIER_SITE (traitement Jekyll ou cache ?)"; fi
+            if [ "$DEP_SECOURS" = oui ] && [ "$contenu_ok" = oui ] && [ "$build_ok" = non ] && [ -n "$autres" ]; then
+              methode="$methode ; secours impossible : autres fichiers du site modifiés ou référence inconnue (${autres})"
+            fi
+            echo "::warning::Version en ligne NON confirmée ($methode). Capture de la version actuellement servie."
+          fi
+          {
+            echo "a_jour=$a_jour"
+            echo "methode=$methode"
+            echo "code=$code"
+            echo "dep_cas=$DEP_CAS"
+            echo "type_pages=$type_pages"
+            echo "comparaison=$comparaison_valide"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Installer Playwright, Pillow et Chromium
+        run: |
+          python -m pip install --quiet playwright==1.48.0 pillow==10.4.0
+          python -m playwright install --with-deps chromium
+
+      - name: Réaliser les captures
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+          OUT_DIR: ${{ runner.temp }}/captures
+          PAGE_NAME: homepage
+          SEUIL_PLEINE_PAGE: "15000"
+        run: python .github/scripts/captures_ecran.py
+
+      # Seconde vérification, APRÈS les captures : une autre publication a pu intervenir
+      # pendant qu'elles étaient réalisées. La version n'est finalement « confirmée » que si
+      # les deux vérifications réussissent. Le résultat des deux est ajouté à rapport.json
+      # et transmis à latest.json et au README.
+      - name: Revérifier la version publiée après les captures
+        id: reverif
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CAPTURES: ${{ runner.temp }}/captures
+          A_JOUR_1: ${{ steps.attente.outputs.a_jour }}
+          METHODE_1: ${{ steps.attente.outputs.methode }}
+          CODE_1: ${{ steps.attente.outputs.code }}
+          CAS_1: ${{ steps.attente.outputs.dep_cas }}
+          TYPE_PAGES: ${{ steps.attente.outputs.type_pages }}
+          COMPARAISON: ${{ steps.attente.outputs.comparaison }}
+        run: |
+          set -uo pipefail
+          source "$RUNNER_TEMP/deploiement.sh"
+          verifier_deploiement
+          echo "Déploiements [$DEP_CAS] : $DEP_DETAIL"
+
+          contenu_ok=non
+          if [ "$COMPARAISON" = oui ]; then
+            attendu=$(sha256sum "$FICHIER_SITE" | cut -d' ' -f1) || attendu=""
+            servi=""
+            rm -f "$RUNNER_TEMP/servi.html"
+            if curl -sfL --max-time 30 -H 'Cache-Control: no-cache' -o "$RUNNER_TEMP/servi.html" "${SITE_URL}?v=${GITHUB_SHA}-apres"; then
+              servi=$(sha256sum "$RUNNER_TEMP/servi.html" | cut -d' ' -f1) || servi=""
+            fi
+            if [ -n "$attendu" ] && [ -n "$servi" ] && [ "$servi" = "$attendu" ]; then contenu_ok=oui; fi
+          fi
+          # Avec pipefail, un échec de ls-remote donne un code non nul : main_actuel reste vide,
+          # donc différent de GITHUB_SHA (pas de confirmation).
+          main_actuel=$(git ls-remote origin refs/heads/main 2>/dev/null | cut -f1) || main_actuel=""
+
+          # Même règle que la première vérification : le secours (mode classique, contenu
+          # identique, main inchangée) n'est admis que si l'API ne fournit AUCUNE information
+          # sur les déploiements (DEP_SECOURS=oui), et seulement si la première vérification
+          # ne reposait pas déjà sur l'API des déploiements.
+          ok2=non
+          if [ "$A_JOUR_1" != oui ]; then
+            detail2="sans objet : version non confirmée à la première vérification"
+          elif [ "$DEP_CAS" = succes ]; then
+            ok2=oui; detail2="$DEP_DETAIL"
+          elif [ "$DEP_CAS" = autre_commit ]; then
+            detail2="une autre version a été publiée pendant la capture : $DEP_DETAIL"
+          elif [ "$DEP_SECOURS" != oui ]; then
+            detail2="information défavorable ou incomplète : $DEP_DETAIL"
+          elif [ "$CODE_1" = deploiement ]; then
+            detail2="impossible de confirmer : l'API des déploiements ne répond plus ($DEP_DETAIL)"
+          elif [ "$TYPE_PAGES" = legacy ] && [ "$COMPARAISON" = oui ] && [ "$contenu_ok" = oui ] && [ "$main_actuel" = "$GITHUB_SHA" ]; then
+            # Mode classique : Pages publie la tête de main. main n'a pas bougé et le contenu
+            # servi est toujours identique : rien n'a été republié pendant la capture.
+            ok2=oui
+            detail2="mode classique : main toujours au commit ${GITHUB_SHA::7} et contenu servi toujours identique ($DEP_DETAIL)"
+          else
+            detail2="impossible de confirmer : $DEP_DETAIL ; contenu identique = $contenu_ok ; tête de main = ${main_actuel:0:7}"
+          fi
+
+          if [ "$ok2" = oui ]; then final=oui; verdict2="confirmée"; else final=non; verdict2="NON confirmée"; fi
+          if [ "$A_JOUR_1" = oui ] && [ "$ok2" != oui ]; then
+            echo "::warning::La version a pu changer pendant la capture : $detail2"
+          fi
+          methode_finale="avant captures : $METHODE_1 | après captures : $verdict2 - $detail2"
+          echo "$methode_finale"
+
+          # Ajout des deux vérifications dans rapport.json (avant sa publication et son archivage)
+          c1=false; [ "$A_JOUR_1" = oui ] && c1=true
+          c2=false; [ "$ok2" = oui ] && c2=true
+          jq --arg sha "$GITHUB_SHA" --arg m1 "$METHODE_1" --arg d2 "$detail2" \
+             --arg cas1 "$CAS_1" --arg cas2 "$DEP_CAS" --arg code1 "$CODE_1" \
+             --argjson c1 "$c1" --argjson c2 "$c2" \
+             '. + {verificationVersion: {commit: $sha, versionEnLigneConfirmee: ($c1 and $c2),
+                   avantCaptures: {confirmee: $c1, preuve: $code1, casDeploiement: $cas1, methode: $m1},
+                   apresCaptures: {confirmee: $c2, casDeploiement: $cas2, detail: $d2}}}' \
+             "$CAPTURES/rapport.json" > "$CAPTURES/rapport.tmp" \
+            && mv "$CAPTURES/rapport.tmp" "$CAPTURES/rapport.json" \
+            || { echo "::error::Impossible d'ajouter les vérifications à rapport.json."; exit 1; }
+
+          {
+            echo "a_jour=$final"
+            echo "methode=$methode_finale"
+            echo "detail_apres=$detail2"
+            echo "dep_cas=$DEP_CAS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publier sur la branche screenshots
+        id: publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUB_DIR: ${{ runner.temp }}/publication
+          CAPTURES: ${{ runner.temp }}/captures
+          SITE_A_JOUR: ${{ steps.reverif.outputs.a_jour }}
+          SITE_METHODE: ${{ steps.reverif.outputs.methode }}
+        run: |
+          set -eu
+          histo="$(date -u +%Y-%m-%d_%H%M%S)_${GITHUB_SHA::7}"
+          depot="https://github.com/${GITHUB_REPOSITORY}.git"
+          mkdir -p "$PUB_DIR" && cd "$PUB_DIR"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Authentification : assistant d'identification qui lit GH_TOKEN dans l'environnement
+          # au moment de chaque échange. .git/config contient le texte « ${GH_TOKEN} » (non
+          # développé), jamais le jeton ; l'URL du remote ne contient aucun identifiant.
+          # La première valeur vide neutralise tout autre assistant configuré sur la machine.
+          git config --local credential.helper ''
+          git config --local --add credential.helper \
+            '!f() { test "$1" = get || exit 0; echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f'
+          git remote add origin "$depot"
+          # Code 0 : la branche existe ; code 2 : elle n'existe pas encore (première exécution) ;
+          # tout autre code (réseau, droits) : arrêt, pour ne jamais repartir d'une branche vide.
+          if git ls-remote --exit-code --heads origin "$BRANCHE_CAPTURES" >/dev/null; then
+            git fetch -q --depth 1 origin "$BRANCHE_CAPTURES"
+            git checkout -q -b "$BRANCHE_CAPTURES" FETCH_HEAD
+          else
+            rc_branche=$?
+            if [ "$rc_branche" -ne 2 ]; then
+              echo "::error::Impossible de lire la branche $BRANCHE_CAPTURES (code $rc_branche)."; exit 1
+            fi
+            git checkout -q --orphan "$BRANCHE_CAPTURES"
+          fi
+          # Dernière version (chemins stables) : on remplace uniquement le dossier screenshots/
+          rm -rf screenshots && mkdir -p screenshots history
+          cp -R "$CAPTURES"/. screenshots/
+          # Historique : une copie figée par version, jamais réécrite
+          # (pages entières, premiers écrans et rapport ; les tranches restent dans screenshots/parts)
+          mkdir -p "history/$histo" && cp "$CAPTURES"/*.png "$CAPTURES"/rapport.json "history/$histo/"
+          PUB_DIR="$PUB_DIR" HISTO="$histo" COMMIT_SITE="$GITHUB_SHA" \
+          SITE_URL="$SITE_URL" SITE_A_JOUR="$SITE_A_JOUR" SITE_METHODE="$SITE_METHODE" \
+          RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${BRANCHE_CAPTURES}" \
+          ARBO_BASE="https://github.com/${GITHUB_REPOSITORY}/tree/${BRANCHE_CAPTURES}" \
+            python "$GITHUB_WORKSPACE/.github/scripts/index_captures.py"
+          git add -A
+          git commit -q -m "Captures du site ${GITHUB_SHA::7} [skip ci]"
+          git push -q origin "$BRANCHE_CAPTURES"
+          echo "histo=$histo" >> "$GITHUB_OUTPUT"
+          echo "commit_captures=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Contrôle sans authentification de TOUS les fichiers publiés par cette exécution :
+      # README.md, latest.json, pages entières, premiers écrans, tranches, rapport.json
+      # et copie figée dans history/. On interroge l'adresse figée sur le commit publié,
+      # qui n'est pas soumise au cache des adresses de branche.
+      - name: Vérifier l'accès public à tous les fichiers publiés
+        env:
+          PUB_DIR: ${{ runner.temp }}/publication
+          HISTO: ${{ steps.publication.outputs.histo }}
+          COMMIT_CAPTURES: ${{ steps.publication.outputs.commit_captures }}
+        run: |
+          set -u
+          cd "$PUB_DIR"
+          base="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${COMMIT_CAPTURES}"
+          liste=$(git ls-tree -r --name-only HEAD | grep -E "^(README\.md|latest\.json|screenshots/|history/${HISTO}/)")
+          total=0; echecs=0
+          for f in $liste; do
+            total=$((total + 1)); ok=non
+            for i in $(seq 1 6); do
+              entete=$(curl -sI --max-time 20 "$base/$f" || true)
+              if echo "$entete" | grep -qiE '^HTTP/[0-9.]+ 200'; then
+                case "$f" in
+                  *.png) echo "$entete" | grep -qi '^content-type: image/png' && ok=oui ;;
+                  *) ok=oui ;;
+                esac
+              fi
+              [ "$ok" = oui ] && break
+              sleep 5
+            done
+            if [ "$ok" = oui ]; then echo "OK      $f"; else echo "ÉCHEC   $f"; echecs=$((echecs + 1)); fi
+          done
+          echo "Fichiers vérifiés : $total, inaccessibles : $echecs"
+          [ "$total" -gt 0 ] || { echo "::error::Aucun fichier à vérifier."; exit 1; }
+
+          # latest.json : JSON valide, trois formats, commit correct
+          if ! curl -sf --max-time 20 "$base/latest.json" | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d["commitDuSite"] == sys.argv[1], "commit incorrect"
+          assert set(d["captures"]) == {"desktop", "mobile", "tablet"}, "formats incomplets"
+          ' "$GITHUB_SHA"; then
+            echo "::error::latest.json publié invalide ou incohérent."; echecs=$((echecs + 1))
+          fi
+
+          # Adresses permanentes (branche) : soumises au cache de GitHub jusqu'à 5 minutes
+          perm="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${BRANCHE_CAPTURES}"
+          frais=non
+          for i in $(seq 1 12); do
+            c=$(curl -sf --max-time 20 "$perm/latest.json?t=$i" | python3 -c 'import json,sys; print(json.load(sys.stdin)["commitDuSite"])' 2>/dev/null || true)
+            if [ "$c" = "$GITHUB_SHA" ]; then frais=oui; break; fi
+            sleep 10
+          done
+          if [ "$frais" = oui ]; then echo "Adresses permanentes à jour."
+          else echo "::warning::Les adresses permanentes affichent encore l'ancienne version (cache GitHub). Elles se mettront à jour d'elles-mêmes sous quelques minutes."; fi
+
+          [ "$echecs" -eq 0 ] || { echo "::error::$echecs fichier(s) non accessibles publiquement."; exit 1; }
+
+      # Pas de résumé de captures pour une exécution refusée (hors main) : l'étape de refus
+      # écrit déjà son propre message dans le résumé.
+      - name: Résumé
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          HISTO: ${{ steps.publication.outputs.histo }}
+          FINAL: ${{ steps.reverif.outputs.a_jour }}
+          AVANT_OK: ${{ steps.attente.outputs.a_jour }}
+          AVANT_METHODE: ${{ steps.attente.outputs.methode }}
+          AVANT_CAS: ${{ steps.attente.outputs.dep_cas }}
+          APRES_DETAIL: ${{ steps.reverif.outputs.detail_apres }}
+          APRES_CAS: ${{ steps.reverif.outputs.dep_cas }}
+        run: |
+          raw="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${BRANCHE_CAPTURES}"
+          {
+            echo "## Captures d'écran - commit ${GITHUB_SHA::7}"
+            echo ""
+            echo "- Version en ligne confirmée (résultat final) : ${FINAL:-non}"
+            echo "- Avant captures : ${AVANT_OK:-?} [${AVANT_CAS:-?}] - ${AVANT_METHODE:-}"
+            echo "- Après captures : [${APRES_CAS:-?}] ${APRES_DETAIL:-}"
+            echo ""
+            for f in desktop mobile tablet; do
+              echo "- **$f** : $raw/screenshots/homepage-$f.png (figée : $raw/history/${HISTO}/homepage-$f.png)"
+            done
+            echo ""
+            echo "Index complet : https://github.com/${GITHUB_REPOSITORY}/tree/${BRANCHE_CAPTURES}"
+          } >> "$GITHUB_STEP_SUMMARY"
