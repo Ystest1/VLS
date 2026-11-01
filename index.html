@@ -1,10 +1,15 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Accueil Valoris Patrimoine</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <!-- MAQUETTE UNIQUEMENT : polices chargées depuis Google Fonts pour la prévisualisation.
      En production, les fichiers .woff2 seront hébergés dans le thème (aucun appel externe). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500&family=Hanken+Grotesk:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500&family=Playfair+Display:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&display=swap">
 
 <style>
 /* ======================================================================
@@ -56,7 +61,8 @@ body { margin: 0; background: #f7f5f0; }
   --vp-texte-sur-nuit: #c6ccd8;
 
   /* Typographie → theme.json typography.fontFamilies / fontSizes */
-  --vp-font-display: var(--wp--preset--font-family--bodoni, "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif);
+  --vp-font-display: var(--wp--preset--font-family--playfair, "Playfair Display", Georgia, serif);
+  --vp-font-logo: var(--wp--preset--font-family--bodoni, "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif);
   --vp-font-texte: var(--wp--preset--font-family--hanken, "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif);
   --vp-fs-h1: clamp(2.05rem, 1.35rem + 3.2vw, 3.6rem);
   --vp-fs-h2: clamp(1.65rem, 1.25rem + 1.7vw, 2.5rem);
@@ -161,7 +167,7 @@ body { margin: 0; background: #f7f5f0; }
 }
 .vp-site .vp-header .vp-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: var(--vp-header-h); }
 .vp-site .vp-logo { display: inline-flex; flex-direction: column; align-items: flex-start; color: var(--vp-nuit); line-height: 1; }
-.vp-site .vp-logo__nom { font-family: var(--vp-font-display); font-size: 1.5rem; font-weight: 500; letter-spacing: 0.2em; margin-right: -0.2em; }
+.vp-site .vp-logo__nom { font-family: var(--vp-font-logo); font-size: 1.5rem; font-weight: 500; letter-spacing: 0.2em; margin-right: -0.2em; }
 .vp-site .vp-logo__filet { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 6px; }
 .vp-site .vp-logo__filet::before, .vp-site .vp-logo__filet::after { content: ""; flex: 1; height: 1px; background: var(--vp-champagne); }
 .vp-site .vp-logo__sous { font-size: 0.5625rem; font-weight: 600; letter-spacing: 0.42em; margin-right: -0.42em; color: var(--vp-champagne); }
@@ -195,7 +201,12 @@ body { margin: 0; background: #f7f5f0; }
 .vp-site .vp-assurances li { display: flex; align-items: baseline; gap: 12px; font-weight: 500; color: var(--vp-nuit); }
 .vp-site .vp-assurances li::before { content: ""; flex: none; width: 7px; height: 7px; transform: translateY(-2px) rotate(45deg); background: var(--vp-champagne); }
 .vp-site .vp-hero__appel { font-size: var(--vp-fs-petit); color: var(--vp-gris); }
-@media (min-width: 960px) { .vp-site .vp-hero .vp-inner { grid-template-columns: 1.08fr 0.92fr; gap: 64px; } }
+/* Le titre ne dépasse jamais sa colonne : sa taille est plafonnée selon la largeur réelle de la colonne
+   (8.7cqi ≈ largeur de « VALORIS PATRIMOINE. », qui reste sur une ligne), avec un minimum de 1.75rem
+   (sous 420 px, le nom peut alors passer à la ligne). */
+.vp-site .vp-hero__texte { container-type: inline-size; }
+.vp-site .vp-hero h1 { font-size: max(1.75rem, min(var(--vp-fs-h1), 8.7cqi)); }
+@media (min-width: 960px) { .vp-site .vp-hero .vp-inner { grid-template-columns: 1.16fr 0.84fr; gap: 64px; } }
 
 .vp-site .vp-visuel { position: relative; min-width: 0; }
 .vp-site .vp-visuel__cadre { position: relative; aspect-ratio: 4 / 5; width: 100%; max-width: 100%; background: var(--vp-beige); overflow: hidden; border-radius: var(--vp-rayon); }
