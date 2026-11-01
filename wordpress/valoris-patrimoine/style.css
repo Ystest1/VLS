@@ -1,0 +1,14 @@
+/*
+Theme Name: VALORIS PATRIMOINE
+Description: Thème bloc léger du site VALORIS PATRIMOINE. Sections de la page d'accueil fournies comme compositions modifiables dans l'éditeur, polices hébergées dans le thème, aucune extension requise.
+Version: 1.0.0
+Requires at least: 6.6
+Tested up to: 7.1
+Requires PHP: 7.4
+Author: VALORIS PATRIMOINE
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: valoris-patrimoine
+*/
+
+/* Les styles du thème sont dans assets/css/valoris.css (chargé par functions.php). */
