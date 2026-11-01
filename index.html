@@ -329,17 +329,21 @@ body { margin: 0; background: #f7f5f0; }
   background: var(--vp-blanc-pur); border-top: 1px solid var(--vp-ligne); box-shadow: 0 -6px 20px rgba(20,33,58,.08);
   padding: 10px max(12px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
   display: grid; grid-template-columns: auto auto 1fr; gap: 8px;
+  transition: transform .25s ease, visibility .25s;
 }
+/* Repliée tant que les boutons de l'accueil sont à l'écran (évite qu'elle les recouvre) ; hors du parcours clavier. */
+.vp-site .vp-barre-mobile--repliee { transform: translateY(100%); visibility: hidden; }
 .vp-site .vp-barre-mobile .vp-btn { min-height: 48px; padding: 0 14px; font-size: 0.9375rem; }
 .vp-site .vp-barre-mobile .vp-btn--secondaire { padding: 0 12px; }
 @media (min-width: 900px) { .vp-site .vp-barre-mobile { display: none; } }
-@media (max-width: 370px) { .vp-site .vp-barre-mobile .vp-txt-court { display: none; } }
+@media (max-width: 389px) { .vp-site .vp-barre-mobile .vp-txt-court { display: none; } }
 </style>
 
-<!-- MAQUETTE UNIQUEMENT : bandeau de revue -->
-<div class="vp-maquette-revue" role="note">
+<!-- MAQUETTE UNIQUEMENT : bandeau de revue, masqué pour les visiteurs.
+     Affiché seulement en ajoutant ?revue à l'adresse (ex. https://ystest1.github.io/VLS/?revue). -->
+<div class="vp-maquette-revue" role="note" hidden>
   <div class="vp-maquette-revue__inner">
-    <span>Maquette de travail · Page d'accueil V2 · Non publiée · Les liens vers des pages à venir affichent leur destination prévue</span>
+    <span>Mode revue · Page d'accueil V3 · Les liens vers des pages à venir affichent leur destination prévue</span>
     <button type="button" id="vp-toggle-reperes" aria-pressed="false">Masquer les repères « À valider »</button>
   </div>
 </div>
@@ -767,6 +771,21 @@ body { margin: 0; background: #f7f5f0; }
 </div>
 <!-- ======================== FIN DU CONTENEUR VALORIS ======================== -->
 
+<script>
+/* Barre d'action mobile (repris dans WordPress) : repliée tant que les boutons de l'accueil sont visibles,
+   puis affichée dès qu'ils sortent de l'écran. Sans JavaScript, la barre reste affichée. */
+(function () {
+  var barre = document.querySelector('.vp-barre-mobile');
+  var boutons = document.querySelector('.vp-hero .vp-actions');
+  if (!barre || !boutons || !('IntersectionObserver' in window)) return;
+  var r = boutons.getBoundingClientRect();
+  barre.classList.toggle('vp-barre-mobile--repliee', r.bottom > 0 && r.top < window.innerHeight);
+  new IntersectionObserver(function (entrees) {
+    barre.classList.toggle('vp-barre-mobile--repliee', entrees[0].isIntersecting);
+  }).observe(boutons);
+})();
+</script>
+
 <!-- MAQUETTE UNIQUEMENT : info-bulle des destinations -->
 <div class="vp-maquette-bulle" id="vp-bulle" role="status" aria-live="polite" hidden></div>
 
@@ -784,6 +803,7 @@ body { margin: 0; background: #f7f5f0; }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fermer(); });
 
+  if (/[?&]revue(=|&|$)/.test(location.search)) { document.querySelector('.vp-maquette-revue').hidden = false; }
   var bouton = document.getElementById('vp-toggle-reperes');
   bouton.addEventListener('click', function () {
     var masque = document.documentElement.classList.toggle('vp-maquette--sans-reperes');
