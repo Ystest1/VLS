@@ -53,7 +53,7 @@ jobs:
       # fetch-depth 1 : seul le dernier commit de main est récupéré.
       # (fetch-depth 0 téléchargerait toutes les branches, donc tout l'historique des captures.)
       - name: Récupérer le dépôt (main, lecture seule)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
@@ -375,7 +375,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Installer Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
